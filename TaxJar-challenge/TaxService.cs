@@ -22,14 +22,7 @@ namespace TaxJar_challenge
         /// <returns>ITaxRate containing the tax rates at the location</returns>
         public async Task<ITaxRate> GetTaxRateByLocation(ILocation location)
         {
-            try
-            {
-                return await _taxcalc.GetTaxRateByLocation(location);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+           return await _taxcalc.GetTaxRateByLocation(location);
         }
 
         /// <summary>
