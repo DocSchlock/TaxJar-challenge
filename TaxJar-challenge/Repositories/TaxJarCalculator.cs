@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using TaxJar_challenge.models;
 
@@ -53,25 +54,6 @@ namespace TaxJar_challenge.Repositories
         }
 
         /// <summary>
-        /// Gets the individual tax rates per each tax type
-        /// </summary>
-        /// <param name="order"></param>
-        /// <param name="taxRate"></param>
-        /// <returns></returns>
-        public Dictionary<string, float> GetTotalTaxRate(ISalesOrder order, ITaxRate taxRate)
-        {
-            var taxList = new Dictionary<string, float>();
-
-            taxList.Add("CountryRate", taxRate.CountryRate * order.OrderValue);
-            taxList.Add("StateRate", taxRate.StateRate * order.OrderValue);
-            taxList.Add("CombinedRate", taxRate.CombinedRate * order.OrderValue); // this is the main rate to use, but it's important we return all the rates
-            taxList.Add("CombinedDistrictRate", taxRate.CombinedDistrictRate * order.OrderValue);
-            taxList.Add("CityRate", taxRate.CityRate * order.OrderValue);
-
-            return taxList;
-        }
-
-        /// <summary>
         /// Allows use to remove a root wrapper in a JSON payload to deserialize directly to the class
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -104,6 +86,32 @@ namespace TaxJar_challenge.Repositories
                 fields.Add("street", loc.Street);
 
             return await new FormUrlEncodedContent(fields).ReadAsStringAsync();
+        }
+
+        public async Task<ITotalTaxes> GetTotalTaxesOnOrder(ISalesOrder order)
+        {
+            // check the order object for null and malformations
+            if (order == null)
+                throw new ArgumentNullException(nameof(order));
+
+            // serialize it to the post object
+            var json = JsonConvert.SerializeObject(order);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // post to the end point
+            var response = await _httpClient.PostAsync("taxes", content);
+
+            // if good response, deserialize the return
+            if (response != null && response.IsSuccessStatusCode)
+            {
+                //read the content
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var deserializedContent = DeserializeIgnoringRoot<ITotalTaxes>(jsonResponse, "tax");
+                return deserializedContent;
+            }
+            // else throw exception
+            else
+                throw new HttpRequestException($"Failure in GetTotalTaxesOnOrder Code:{response?.StatusCode} Response: {response?.ReasonPhrase}");
         }
     }
 }

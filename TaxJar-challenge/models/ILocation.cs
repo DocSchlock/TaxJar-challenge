@@ -2,6 +2,7 @@
 {
     public interface ILocation
     {
+        string Id { get; set; } // for nexus
         string Country { get; set; }
         string ZipCode { get; set; }
 

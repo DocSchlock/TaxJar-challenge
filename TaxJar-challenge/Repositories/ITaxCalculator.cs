@@ -8,6 +8,6 @@ namespace TaxJar_challenge.Repositories
     {
         Task<ITaxRate> GetTaxRateByLocation(ILocation loc);
 
-        Dictionary<string, float> GetTotalTaxRate(ISalesOrder order, ITaxRate taxRate);
+        Task<ITotalTaxes> GetTotalTaxesOnOrder(ISalesOrder order);
     }
 }

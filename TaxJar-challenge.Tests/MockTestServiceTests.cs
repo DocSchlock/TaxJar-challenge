@@ -13,52 +13,48 @@ namespace TaxJar_challenge.Tests
     [TestClass]
     public class MockTestServiceTests
     {
-        private string _token;
+        // private string _token;
         private TaxService _taxServiceMockText;
+
         private ITaxCalculator _tester;
         private Mock<ITaxCalculator> _mock;
-        private Dictionary<string, float> _perfectTaxDict;
         private TaxJarLocation _validLocation, _malformedLocation;
         private TaxJarTaxRate _compareTaxRate;
-        private readonly List<ISalesOrder> _salesOrders = new List<ISalesOrder>();
+        private SalesOrder _validSalesOrder, _malformedSalesOrder;
+        private TaxJarTotalTaxes _perfectReturnTaxObject;
 
         [TestInitialize]
         public void Setup()
         {
-            _token = File.ReadAllText("configs/key.txt");
+            //_token = File.ReadAllText("configs/key.txt");
             _validLocation = new TaxJarLocation() { Country = "US", ZipCode = "17701" };
             _malformedLocation = new TaxJarLocation() { Country = "TN", ZipCode = "ADFGH" };
-            _salesOrders.Add(new SalesOrder() { Id = new Guid(), OrderValue = 100.00f, Location = _validLocation });
+            _validSalesOrder = new SalesOrder() { ToCountry = "US", Shipping = 100f, ToState = "PA", ToZip = "17701", Amount = 1000f };
+            _malformedSalesOrder = new SalesOrder() { ToCountry = "US", Shipping = 100f, ToState = "", ToZip = "17701", Amount = 1000f };
+
+            _perfectReturnTaxObject = new TaxJarTotalTaxes() { AmountToCollect = 0, FreightTaxable = true, HasNexus = false, OrderTotalAmount = 1100f, Rate = 0, TaxSource = null, Shipping = 100f, TaxableAmount = 0 };
 
             _compareTaxRate = new TaxJarTaxRate() { Country = "US", CountryRate = 0.0f, City = "BARBOURS", CityRate = 0.0f, FreightTaxable = true, CombinedDistrictRate = 0.0f, CombinedRate = 0.0f, ZipCode = "17701", State = "PA", StateRate = 0.0f, Street = null };
-
-            _perfectTaxDict = new Dictionary<string, float>();
-
-            _perfectTaxDict.Add("CountryRate", _compareTaxRate.CountryRate * _salesOrders[0].OrderValue);
-            _perfectTaxDict.Add("StateRate", _compareTaxRate.StateRate * _salesOrders[0].OrderValue);
-            _perfectTaxDict.Add("CombinedRate", _compareTaxRate.CombinedRate * _salesOrders[0].OrderValue); // this is the main rate to use, but it's important we return all the rates
-            _perfectTaxDict.Add("CombinedDistrictRate", _compareTaxRate.CombinedDistrictRate * _salesOrders[0].OrderValue);
-            _perfectTaxDict.Add("CityRate", _compareTaxRate.CityRate * _salesOrders[0].OrderValue);
 
             _mock = new Mock<ITaxCalculator>();
             _tester = _mock.Object;
 
             _taxServiceMockText = new TaxService(_tester);
 
-            _mock.Setup(t => t.GetTaxRateByLocation(_salesOrders[0].Location).Result).Returns(_compareTaxRate);
+            _mock.Setup(t => t.GetTaxRateByLocation(_validLocation).Result).Returns(_compareTaxRate);
             _mock.Setup(t => t.GetTaxRateByLocation(null).Result).Throws<NullReferenceException>();
             _mock.Setup(t => t.GetTaxRateByLocation(_malformedLocation).Result).Throws<HttpRequestException>();
 
-            _mock.Setup(t => t.GetTotalTaxRate(_salesOrders[0], _compareTaxRate)).Returns(_perfectTaxDict);
-            _mock.Setup(t => t.GetTotalTaxRate(null, _compareTaxRate)).Throws<NullReferenceException>();
-            _mock.Setup(t => t.GetTotalTaxRate(_salesOrders[0], null)).Throws<NullReferenceException>();
+            _mock.Setup(t => t.GetTotalTaxesOnOrder(_validSalesOrder).Result).Returns(_perfectReturnTaxObject);
+            _mock.Setup(t => t.GetTotalTaxesOnOrder(null)).Throws<ArgumentNullException>();
+            _mock.Setup(t => t.GetTotalTaxesOnOrder(_malformedSalesOrder)).Throws<HttpRequestException>();
         }
 
         [TestMethod]
         public void MockGetTaxRateByLocationPass()
         {
-            Assert.AreEqual(_compareTaxRate, _taxServiceMockText.GetTaxRateByLocation(_salesOrders[0].Location).Result);
-            _mock.Verify(t => t.GetTaxRateByLocation(_salesOrders[0].Location), Times.AtMostOnce);
+            Assert.AreEqual(_compareTaxRate, _taxServiceMockText.GetTaxRateByLocation(_validLocation).Result);
+            _mock.Verify(t => t.GetTaxRateByLocation(_validLocation), Times.AtMostOnce);
         }
 
         [TestMethod]
@@ -76,24 +72,24 @@ namespace TaxJar_challenge.Tests
         }
 
         [TestMethod]
-        public void MockGetTotalTaxesPass()
+        public async Task MockGetTotalTaxesPass()
         {
-            Assert.AreEqual(_perfectTaxDict, _taxServiceMockText.GetTotalTaxRate(_salesOrders[0], _compareTaxRate));
-            _mock.Verify(t => t.GetTotalTaxRate(_salesOrders[0], _compareTaxRate), Times.AtMostOnce);
+            var holder = await _taxServiceMockText.GetTotalTaxesOnOrder(_validSalesOrder);
+            _mock.Verify(t => t.GetTotalTaxesOnOrder(_validSalesOrder), Times.AtMostOnce);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(NullReferenceException))]
-        public void MockGetTotalTaxesNullSO()
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task MockGetTotalTaxesNullSO()
         {
-            _taxServiceMockText.GetTotalTaxRate(null, _compareTaxRate);
+            await _taxServiceMockText.GetTotalTaxesOnOrder(null);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(NullReferenceException))]
-        public void MockGetTotalTaxesNullLocation()
+        [ExpectedException(typeof(HttpRequestException))]
+        public async Task MockGetTotalTaxesNullLocation()
         {
-            _taxServiceMockText.GetTotalTaxRate(_salesOrders[0], null);
+            await _taxServiceMockText.GetTotalTaxesOnOrder(_malformedSalesOrder);
         }
     }
 }

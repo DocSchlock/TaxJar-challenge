@@ -22,19 +22,12 @@ namespace TaxJar_challenge
         /// <returns>ITaxRate containing the tax rates at the location</returns>
         public async Task<ITaxRate> GetTaxRateByLocation(ILocation location)
         {
-           return await _taxcalc.GetTaxRateByLocation(location);
+            return await _taxcalc.GetTaxRateByLocation(location);
         }
 
-        /// <summary>
-        /// Gets a Dictionary containing the RateName : RateValueOfOrder for a given ISalesOrder and a given ITaxRate
-        /// Uses the injected API to calculate
-        /// </summary>
-        /// <param name="order">ISalesOrder object</param>
-        /// <param name="taxrate">ITaxRate object</param>
-        /// <returns>IDictionary<string,float> of TaxRate : TaxAmount on the Order</returns>
-        public IDictionary<string, float> GetTotalTaxRate(ISalesOrder order, ITaxRate taxrate)
+        public async Task<ITotalTaxes> GetTotalTaxesOnOrder(ISalesOrder order)
         {
-            return _taxcalc.GetTotalTaxRate(order, taxrate);
+            return await _taxcalc.GetTotalTaxesOnOrder(order);
         }
     }
 }
